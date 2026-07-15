@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#08111f" />
+  <title>DCA Planner – Buy / Sell</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07101d;
+      --panel: rgba(15, 27, 45, 0.92);
+      --panel-2: rgba(20, 36, 58, 0.92);
+      --line: rgba(148, 163, 184, 0.18);
+      --text: #eef5ff;
+      --muted: #91a4bd;
+      --cyan: #38bdf8;
+      --green: #2dd4bf;
+      --red: #fb7185;
+      --amber: #fbbf24;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(56, 189, 248, .16), transparent 30%),
+        radial-gradient(circle at 92% 8%, rgba(45, 212, 191, .12), transparent 26%),
+        linear-gradient(180deg, #07101d 0%, #0a1423 50%, #07101d 100%);
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .app { width: min(1480px, 100%); margin: 0 auto; padding: 24px; }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 22px;
+    }
+    .eyebrow { color: var(--cyan); font-weight: 800; letter-spacing: .14em; font-size: 12px; text-transform: uppercase; }
+    h1 { margin: 8px 0 8px; font-size: clamp(28px, 4vw, 48px); letter-spacing: -.04em; }
+    .hero p { margin: 0; color: var(--muted); max-width: 780px; line-height: 1.6; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      border: 1px solid var(--line); background: rgba(8, 17, 31, .72); border-radius: 999px;
+      padding: 10px 14px; color: var(--muted); font-size: 13px;
+    }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 16px var(--green); }
+
+    .layout { display: grid; grid-template-columns: minmax(330px, 430px) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .panel {
+      background: linear-gradient(180deg, var(--panel), rgba(10, 20, 35, .96));
+      border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .panel-head h2 { margin: 0; font-size: 17px; }
+    .panel-head span { color: var(--muted); font-size: 12px; }
+    .panel-body { padding: 20px; }
+
+    .direction { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .direction button {
+      border: 1px solid var(--line); background: rgba(255,255,255,.035); color: var(--muted);
+      border-radius: 13px; padding: 13px 12px; font-weight: 800; transition: .18s ease;
+    }
+    .direction button.active[data-side="BUY"] { color: #b9fff0; border-color: rgba(45,212,191,.75); background: rgba(45,212,191,.14); box-shadow: inset 0 0 0 1px rgba(45,212,191,.12); }
+    .direction button.active[data-side="SELL"] { color: #ffd2da; border-color: rgba(251,113,133,.75); background: rgba(251,113,133,.14); box-shadow: inset 0 0 0 1px rgba(251,113,133,.12); }
+
+    .section-title { margin: 22px 0 12px; color: #c8d5e7; font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; margin: 0 0 7px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    input, select {
+      width: 100%; border: 1px solid var(--line); background: rgba(5, 13, 25, .86); color: var(--text);
+      border-radius: 11px; padding: 11px 12px; outline: none; transition: .18s ease;
+    }
+    input:focus, select:focus { border-color: rgba(56,189,248,.75); box-shadow: 0 0 0 3px rgba(56,189,248,.11); }
+    .hint { margin-top: 6px; color: #6f829c; font-size: 11px; line-height: 1.45; }
+
+    .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mode-tabs button {
+      border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--muted);
+      padding: 10px 8px; border-radius: 10px; font-size: 12px; font-weight: 800;
+    }
+    .mode-tabs button.active { color: var(--text); border-color: rgba(56,189,248,.65); background: rgba(56,189,248,.12); }
+
+    .actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 22px; }
+    .primary, .secondary {
+      border-radius: 12px; padding: 13px 16px; font-weight: 900; border: 1px solid transparent;
+    }
+    .primary { color: #04111c; background: linear-gradient(135deg, var(--cyan), var(--green)); }
+    .secondary { color: var(--muted); background: transparent; border-color: var(--line); }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 12px; padding: 18px 20px 0; }
+    .metric { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); padding: 14px; min-height: 96px; }
+    .metric .label { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    .metric .value { margin-top: 8px; font-size: 22px; font-weight: 900; letter-spacing: -.02em; word-break: break-word; }
+    .metric .sub { margin-top: 5px; color: #71849d; font-size: 11px; }
+    .metric.good .value { color: #7ff4dc; }
+    .metric.bad .value { color: #ff9aac; }
+    .metric.warn .value { color: #ffd36b; }
+
+    .risk-box { margin: 14px 20px 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 12px; color: var(--muted); background: rgba(255,255,255,.025); line-height: 1.5; font-size: 13px; }
+    .risk-box.good { border-color: rgba(45,212,191,.34); background: rgba(45,212,191,.07); color: #bff9ed; }
+    .risk-box.warn { border-color: rgba(251,191,36,.4); background: rgba(251,191,36,.08); color: #ffe5a1; }
+    .risk-box.bad { border-color: rgba(251,113,133,.42); background: rgba(251,113,133,.08); color: #ffc1cc; }
+
+    .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 16px 20px; }
+    .toolbar .left { color: var(--muted); font-size: 12px; display: flex; align-items: center; }
+    .toolbar .right { display: flex; gap: 8px; }
+    .mini-btn { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); color: var(--muted); background: transparent; font-size: 12px; font-weight: 700; }
+
+    .table-wrap { overflow: auto; border-top: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; min-width: 970px; }
+    th { position: sticky; top: 0; z-index: 2; background: #0f1c2e; color: #8fa3bd; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; text-align: right; padding: 12px 11px; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+    td { padding: 10px 11px; border-bottom: 1px solid rgba(148,163,184,.10); text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+    tr:hover td { background: rgba(56,189,248,.035); }
+    .side-tag { display: inline-flex; border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 900; }
+    .side-tag.buy { background: rgba(45,212,191,.13); color: #8ff7e2; }
+    .side-tag.sell { background: rgba(251,113,133,.13); color: #ffadbb; }
+    .editable { min-width: 92px; text-align: right; padding: 7px 8px; border-radius: 8px; }
+    .positive { color: #7ff4dc; }
+    .negative { color: #ff9aac; }
+    .empty { padding: 64px 22px; text-align: center; color: var(--muted); }
+
+    .footer-note { margin: 18px 2px 0; color: #6f829c; font-size: 11px; line-height: 1.6; }
+    .hidden { display: none !important; }
+    .toast { position: fixed; right: 18px; bottom: 18px; max-width: 330px; border: 1px solid var(--line); background: #102138; color: var(--text); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; font-size: 13px; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .app { padding: 14px; }
+      .hero { display: block; }
+      .status-pill { margin-top: 14px; }
+      .panel-body, .panel-head { padding-left: 15px; padding-right: 15px; }
+      .field-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .summary-grid { grid-template-columns: 1fr 1fr; padding-left: 14px; padding-right: 14px; }
+      .metric { min-height: 88px; padding: 12px; }
+      .metric .value { font-size: 18px; }
+      .risk-box { margin-left: 14px; margin-right: 14px; }
+      .toolbar { padding-left: 14px; padding-right: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">DCA Risk Planner</div>
+        <h1>Lập kế hoạch DCA Buy / Sell</h1>
+        <p>Nhập giá vào lệnh, vốn, khoảng cách DCA và volume. Web tự tạo bảng lệnh, giá vốn trung bình, margin ước tính và P/L tại TP hoặc SL.</p>
+      </div>
+      <div class="status-pill"><span class="status-dot"></span> Chạy trực tiếp trên trình duyệt</div>
+    </header>
+
+    <section class="layout">
+      <aside class="panel">
+        <div class="panel-head">
+          <h2>Thiết lập chiến lược</h2>
+          <span>Tự lưu trên máy</span>
+        </div>
+        <div class="panel-body">
+          <div class="direction" role="group" aria-label="Chọn hướng giao dịch">
+            <button type="button" class="active" data-side="BUY">BUY / DCA xuống</button>
+            <button type="button" data-side="SELL">SELL / DCA lên</button>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="symbol">Mã giao dịch</label>
+              <input id="symbol" value="XAUUSD" maxlength="18" />
+            </div>
+            <div class="field">
+              <label for="entryPrice">Giá lệnh đầu</label>
+              <input id="entryPrice" type="number" min="0.00001" step="0.01" value="3350" />
+            </div>
+            <div class="field">
+              <label for="capital">Vốn tài khoản (USD)</label>
+              <input id="capital" type="number" min="0" step="10" value="1000" />
+            </div>
+            <div class="field">
+              <label for="orders">Tổng số lệnh</label>
+              <input id="orders" type="number" min="1" max="100" step="1" value="8" />
+            </div>
+          </div>
+
+          <div class="section-title">Khoảng cách giá</div>
+          <div class="field-grid">
+            <div class="field full">
+              <div class="mode-tabs" id="gapModeTabs">
+                <button type="button" class="active" data-mode="fixed">Cố định theo giá</button>
+                <button type="button" data-mode="percent">Theo phần trăm</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="gapValue">Khoảng cách mỗi lệnh</label>
+              <input id="gapValue" type="number" min="0" step="0.01" value="5" />
+              <div class="hint" id="gapHint">Ví dụ 5 = mỗi lệnh cách nhau 5 giá.</div>
+            </div>
+            <div class="field">
+              <label for="gapGrowth">Tăng khoảng cách</label>
+              <input id="gapGrowth" type="number" min="0.1" step="0.05" value="1" />
+              <div class="hint">1 = đều; 1.2 = khoảng cách sau lớn hơn 20%.</div>
+            </div>
+          </div>
+
+          <div class="section-title">Volume</div>
+          <div class="field-grid">
+            <div class="field full">
+              <div class="mode-tabs" id="volumeModeTabs">
+                <button type="button" class="active" data-mode="fixed">Volume cố định</button>
+                <button type="button" data-mode="progressive">Tăng tiến volume</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="baseVolume">Volume lệnh đầu</label>
+              <input id="baseVolume" type="number" min="0.001" step="0.01" value="0.01" />
+            </div>
+            <div class="field" id="multiplierField">
+              <label for="volumeMultiplier">Hệ số nhân volume</label>
+              <input id="volumeMultiplier" type="number" min="1" step="0.05" value="1.5" disabled />
+              <div class="hint">Ví dụ 1.5: 0.01 → 0.015 → 0.0225…</div>
+            </div>
+          </div>
+
+          <div class="section-title">Tính vốn và lợi nhuận</div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="contractSize">Contract size</label>
+              <input id="contractSize" type="number" min="0.0001" step="1" value="100" />
+              <div class="hint">XAUUSD thường 1 lot = 100 oz, tùy sàn.</div>
+            </div>
+            <div class="field">
+              <label for="leverage">Đòn bẩy</label>
+              <input id="leverage" type="number" min="1" step="1" value="500" />
+            </div>
+            <div class="field">
+              <label for="targetPrice">Giá chốt lời (TP)</label>
+              <input id="targetPrice" type="number" min="0" step="0.01" value="3365" />
+            </div>
+            <div class="field">
+              <label for="stopPrice">Giá cắt lỗ (SL)</label>
+              <input id="stopPrice" type="number" min="0" step="0.01" value="3300" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="calculateBtn" type="button">Tạo kế hoạch DCA</button>
+            <button class="secondary" id="resetBtn" type="button" title="Khôi phục mặc định">Reset</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Kết quả kế hoạch</h2>
+          <span id="planTitle">XAUUSD · BUY</span>
+        </div>
+
+        <div class="summary-grid">
+          <article class="metric">
+            <div class="label">Giá vốn trung bình</div>
+            <div class="value" id="avgEntry">—</div>
+            <div class="sub" id="priceRange">Chưa tính</div>
+          </article>
+          <article class="metric">
+            <div class="label">Tổng volume</div>
+            <div class="value" id="totalVolume">—</div>
+            <div class="sub" id="orderCount">0 lệnh</div>
+          </article>
+          <article class="metric">
+            <div class="label">Margin ước tính</div>
+            <div class="value" id="marginUsed">—</div>
+            <div class="sub" id="marginRatio">—% vốn</div>
+          </article>
+          <article class="metric">
+            <div class="label">P/L tại TP</div>
+            <div class="value" id="targetPnl">—</div>
+            <div class="sub" id="targetRoi">—% vốn</div>
+          </article>
+          <article class="metric">
+            <div class="label">P/L tại SL</div>
+            <div class="value" id="stopPnl">—</div>
+            <div class="sub" id="stopRoi">—% vốn</div>
+          </article>
+          <article class="metric">
+            <div class="label">Giá hòa vốn</div>
+            <div class="value" id="breakEven">—</div>
+            <div class="sub">Chưa gồm spread / swap</div>
+          </article>
+          <article class="metric">
+            <div class="label">Vốn còn lại sau margin</div>
+            <div class="value" id="freeCapital">—</div>
+            <div class="sub" id="freeCapitalRatio">—% vốn</div>
+          </article>
+          <article class="metric">
+            <div class="label">Khoảng giá toàn bộ DCA</div>
+            <div class="value" id="dcaSpan">—</div>
+            <div class="sub" id="lastEntry">Lệnh cuối: —</div>
+          </article>
+        </div>
+
+        <div class="risk-box" id="riskBox">Nhấn “Tạo kế hoạch DCA” để tính.</div>
+
+        <div class="toolbar">
+          <div class="left">Có thể sửa trực tiếp Giá và Volume trong bảng; kết quả sẽ tự cập nhật.</div>
+          <div class="right">
+            <button class="mini-btn" id="copyBtn" type="button">Copy bảng</button>
+            <button class="mini-btn" id="csvBtn" type="button">Tải CSV</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Hướng</th>
+                <th>Giá vào</th>
+                <th>Volume</th>
+                <th>Tổng volume</th>
+                <th>Giá vốn TB</th>
+                <th>Margin lệnh</th>
+                <th>P/L tại TP</th>
+                <th>P/L tại SL</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody">
+              <tr><td colspan="9"><div class="empty">Chưa có kế hoạch DCA.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <p class="footer-note">
+      Công cụ này chỉ dùng để lập kế hoạch và ước tính. Margin, contract size, commission, spread, swap, stop-out và cách làm tròn volume khác nhau theo từng broker; hãy nhập đúng thông số sàn trước khi dùng tiền thật.
+    </p>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const DEFAULTS = {
+        side: 'BUY', gapMode: 'fixed', volumeMode: 'fixed', symbol: 'XAUUSD', entryPrice: 3350,
+        capital: 1000, orders: 8, gapValue: 5, gapGrowth: 1, baseVolume: 0.01,
+        volumeMultiplier: 1.5, contractSize: 100, leverage: 500, targetPrice: 3365, stopPrice: 3300
+      };
+
+      const state = {
+        side: 'BUY', gapMode: 'fixed', volumeMode: 'fixed', rows: []
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const fields = ['symbol','entryPrice','capital','orders','gapValue','gapGrowth','baseVolume','volumeMultiplier','contractSize','leverage','targetPrice','stopPrice'];
+
+      const numberValue = (id, fallback = 0) => {
+        const n = Number($(id).value);
+        return Number.isFinite(n) ? n : fallback;
+      };
+
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      const round = (value, decimals = 8) => Number(Number(value).toFixed(decimals));
+      const money = (value) => Number.isFinite(value)
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
+        : '—';
+      const fmt = (value, digits = 4) => Number.isFinite(value)
+        ? new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(value)
+        : '—';
+      const pct = (value) => Number.isFinite(value) ? `${fmt(value, 2)}%` : '—';
+      const signedMoney = (value) => Number.isFinite(value) ? `${value >= 0 ? '+' : ''}${money(value)}` : '—';
+
+      function getConfig() {
+        return {
+          side: state.side,
+          gapMode: state.gapMode,
+          volumeMode: state.volumeMode,
+          symbol: $('symbol').value.trim().toUpperCase() || 'SYMBOL',
+          entryPrice: Math.max(numberValue('entryPrice'), 0.00000001),
+          capital: Math.max(numberValue('capital'), 0),
+          orders: clamp(Math.round(numberValue('orders', 1)), 1, 100),
+          gapValue: Math.max(numberValue('gapValue'), 0),
+          gapGrowth: Math.max(numberValue('gapGrowth', 1), 0.01),
+          baseVolume: Math.max(numberValue('baseVolume'), 0.000001),
+          volumeMultiplier: Math.max(numberValue('volumeMultiplier', 1), 1),
+          contractSize: Math.max(numberValue('contractSize', 1), 0.000001),
+          leverage: Math.max(numberValue('leverage', 1), 1),
+          targetPrice: Math.max(numberValue('targetPrice'), 0),
+          stopPrice: Math.max(numberValue('stopPrice'), 0)
+        };
+      }
+
+      function validate(config) {
+        const errors = [];
+        if (config.entryPrice <= 0) errors.push('Giá lệnh đầu phải lớn hơn 0.');
+        if (config.capital <= 0) errors.push('Vốn tài khoản phải lớn hơn 0.');
+        if (config.gapValue <= 0 && config.orders > 1) errors.push('Khoảng cách DCA phải lớn hơn 0 khi có nhiều lệnh.');
+        if (config.baseVolume <= 0) errors.push('Volume phải lớn hơn 0.');
+        if (config.contractSize <= 0 || config.leverage <= 0) errors.push('Contract size và đòn bẩy phải lớn hơn 0.');
+        return errors;
+      }
+
+      function buildRows(config) {
+        const rows = [];
+        let cumulativeGap = 0;
+        let cumulativeVolume = 0;
+        let weightedCost = 0;
+
+        for (let i = 0; i < config.orders; i++) {
+          if (i > 0) {
+            const gapScale = Math.pow(config.gapGrowth, i - 1);
+            const baseGap = config.gapMode === 'percent'
+              ? config.entryPrice * (config.gapValue / 100)
+              : config.gapValue;
+            cumulativeGap += baseGap * gapScale;
+          }
+
+          const sign = config.side === 'BUY' ? -1 : 1;
+          const price = Math.max(config.entryPrice + sign * cumulativeGap, 0.00000001);
+          const volume = config.volumeMode === 'progressive'
+            ? config.baseVolume * Math.pow(config.volumeMultiplier, i)
+            : config.baseVolume;
+
+          cumulativeVolume += volume;
+          weightedCost += price * volume;
+          const avgPrice = weightedCost / cumulativeVolume;
+          const margin = price * volume * config.contractSize / config.leverage;
+          const targetPnl = pnlAt(config.side, price, config.targetPrice, volume, config.contractSize);
+          const stopPnl = pnlAt(config.side, price, config.stopPrice, volume, config.contractSize);
+
+          rows.push({
+            index: i + 1,
+            side: config.side,
+            price: round(price),
+            volume: round(volume),
+            cumulativeVolume: round(cumulativeVolume),
+            avgPrice: round(avgPrice),
+            margin: round(margin),
+            targetPnl: round(targetPnl),
+            stopPnl: round(stopPnl)
+          });
+        }
+        return rows;
+      }
+
+      function pnlAt(side, entry, exit, volume, contractSize) {
+        const movement = side === 'BUY' ? exit - entry : entry - exit;
+        return movement * volume * contractSize;
+      }
+
+      function recalculateRowsFromEdits() {
+        const config = getConfig();
+        let cumulativeVolume = 0;
+        let weightedCost = 0;
+
+        state.rows = state.rows.map((row, index) => {
+          const priceInput = document.querySelector(`[data-row-price="${index}"]`);
+          const volumeInput = document.querySelector(`[data-row-volume="${index}"]`);
+          const price = Math.max(Number(priceInput?.value ?? row.price) || 0, 0.00000001);
+          const volume = Math.max(Number(volumeInput?.value ?? row.volume) || 0, 0.000001);
+          cumulativeVolume += volume;
+          weightedCost += price * volume;
+          return {
+            ...row, price: round(price), volume: round(volume), cumulativeVolume: round(cumulativeVolume),
+            avgPrice: round(weightedCost / cumulativeVolume),
+            margin: round(price * volume * config.contractSize / config.leverage),
+            targetPnl: round(pnlAt(config.side, price, config.targetPrice, volume, config.contractSize)),
+            stopPnl: round(pnlAt(config.side, price, config.stopPrice, volume, config.contractSize))
+          };
+        });
+        render(false);
+        persist();
+      }
+
+      function summarize(config, rows) {
+        if (!rows.length) return null;
+        const totalVolume = rows.reduce((sum, row) => sum + row.volume, 0);
+        const weighted = rows.reduce((sum, row) => sum + row.price * row.volume, 0);
+        const avgEntry = weighted / totalVolume;
+        const totalMargin = rows.reduce((sum, row) => sum + row.margin, 0);
+        const targetPnl = pnlAt(config.side, avgEntry, config.targetPrice, totalVolume, config.contractSize);
+        const stopPnl = pnlAt(config.side, avgEntry, config.stopPrice, totalVolume, config.contractSize);
+        const prices = rows.map(r => r.price);
+        return {
+          totalVolume, avgEntry, totalMargin, targetPnl, stopPnl,
+          marginRatio: config.capital ? totalMargin / config.capital * 100 : Infinity,
+          targetRoi: config.capital ? targetPnl / config.capital * 100 : 0,
+          stopRoi: config.capital ? stopPnl / config.capital * 100 : 0,
+          freeCapital: config.capital - totalMargin,
+          freeCapitalRatio: config.capital ? (config.capital - totalMargin) / config.capital * 100 : 0,
+          minPrice: Math.min(...prices), maxPrice: Math.max(...prices),
+          span: Math.max(...prices) - Math.min(...prices), lastPrice: rows[rows.length - 1].price
+        };
+      }
+
+      function metricState(element, value, thresholds = { warn: 60, bad: 100 }) {
+        element.closest('.metric').classList.remove('good','warn','bad');
+        if (value >= thresholds.bad) element.closest('.metric').classList.add('bad');
+        else if (value >= thresholds.warn) element.closest('.metric').classList.add('warn');
+        else element.closest('.metric').classList.add('good');
+      }
+
+      function render(rebuildTable = true) {
+        const config = getConfig();
+        const summary = summarize(config, state.rows);
+        $('planTitle').textContent = `${config.symbol} · ${config.side}`;
+
+        if (!summary) {
+          $('ordersBody').innerHTML = '<tr><td colspan="9"><div class="empty">Chưa có kế hoạch DCA.</div></td></tr>';
+          return;
+        }
+
+        $('avgEntry').textContent = fmt(summary.avgEntry, 5);
+        $('priceRange').textContent = `${fmt(summary.minPrice, 5)} → ${fmt(summary.maxPrice, 5)}`;
+        $('totalVolume').textContent = fmt(summary.totalVolume, 6);
+        $('orderCount').textContent = `${state.rows.length} lệnh`;
+        $('marginUsed').textContent = money(summary.totalMargin);
+        $('marginRatio').textContent = `${pct(summary.marginRatio)} vốn`;
+        $('targetPnl').textContent = signedMoney(summary.targetPnl);
+        $('targetRoi').textContent = `${summary.targetPnl >= 0 ? '+' : ''}${pct(summary.targetRoi)} vốn`;
+        $('stopPnl').textContent = signedMoney(summary.stopPnl);
+        $('stopRoi').textContent = `${summary.stopPnl >= 0 ? '+' : ''}${pct(summary.stopRoi)} vốn`;
+        $('breakEven').textContent = fmt(summary.avgEntry, 5);
+        $('freeCapital').textContent = money(summary.freeCapital);
+        $('freeCapitalRatio').textContent = `${pct(summary.freeCapitalRatio)} vốn`;
+        $('dcaSpan').textContent = fmt(summary.span, 5);
+        $('lastEntry').textContent = `Lệnh cuối: ${fmt(summary.lastPrice, 5)}`;
+
+        metricState($('marginUsed'), summary.marginRatio);
+        const tpMetric = $('targetPnl').closest('.metric');
+        tpMetric.classList.remove('good','bad','warn'); tpMetric.classList.add(summary.targetPnl >= 0 ? 'good' : 'bad');
+        const slMetric = $('stopPnl').closest('.metric');
+        slMetric.classList.remove('good','bad','warn'); slMetric.classList.add(summary.stopPnl >= 0 ? 'good' : 'bad');
+        const freeMetric = $('freeCapital').closest('.metric');
+        freeMetric.classList.remove('good','bad','warn');
+        freeMetric.classList.add(summary.freeCapital < 0 ? 'bad' : summary.freeCapitalRatio < 40 ? 'warn' : 'good');
+
+        const riskBox = $('riskBox');
+        riskBox.className = 'risk-box';
+        if (summary.totalMargin > config.capital) {
+          riskBox.classList.add('bad');
+          riskBox.textContent = `Nguy hiểm: margin ước tính vượt vốn ${money(Math.abs(summary.freeCapital))}. Hãy giảm volume, số lệnh hoặc hệ số tăng tiến.`;
+        } else if (summary.marginRatio >= 60 || summary.stopPnl <= -config.capital * 0.5) {
+          riskBox.classList.add('warn');
+          riskBox.textContent = `Rủi ro cao: dùng ${pct(summary.marginRatio)} vốn cho margin và P/L tại SL là ${signedMoney(summary.stopPnl)}. Chưa tính stop-out, spread và swap.`;
+        } else {
+          riskBox.classList.add('good');
+          riskBox.textContent = `Kế hoạch đang dùng khoảng ${pct(summary.marginRatio)} vốn cho margin. P/L tại TP: ${signedMoney(summary.targetPnl)}; tại SL: ${signedMoney(summary.stopPnl)}.`;
+        }
+
+        if (rebuildTable) renderTable(config);
+        else updateTableCalculatedCells(config);
+      }
+
+      function renderTable(config) {
+        $('ordersBody').innerHTML = state.rows.map((row, index) => `
+          <tr data-row="${index}">
+            <td>${row.index}</td>
+            <td><span class="side-tag ${config.side.toLowerCase()}">${config.side}</span></td>
+            <td><input class="editable" data-row-price="${index}" type="number" min="0.00000001" step="0.01" value="${row.price}"></td>
+            <td><input class="editable" data-row-volume="${index}" type="number" min="0.000001" step="0.001" value="${row.volume}"></td>
+            <td data-cell="cum-${index}">${fmt(row.cumulativeVolume, 6)}</td>
+            <td data-cell="avg-${index}">${fmt(row.avgPrice, 5)}</td>
+            <td data-cell="margin-${index}">${money(row.margin)}</td>
+            <td data-cell="tp-${index}" class="${row.targetPnl >= 0 ? 'positive' : 'negative'}">${signedMoney(row.targetPnl)}</td>
+            <td data-cell="sl-${index}" class="${row.stopPnl >= 0 ? 'positive' : 'negative'}">${signedMoney(row.stopPnl)}</td>
+          </tr>
+        `).join('');
+
+        document.querySelectorAll('[data-row-price], [data-row-volume]').forEach(input => {
+          input.addEventListener('change', recalculateRowsFromEdits);
+          input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') { event.preventDefault(); input.blur(); }
+          });
+        });
+      }
+
+      function updateTableCalculatedCells() {
+        state.rows.forEach((row, index) => {
+          const set = (name, value) => { const el = document.querySelector(`[data-cell="${name}-${index}"]`); if (el) el.textContent = value; };
+          set('cum', fmt(row.cumulativeVolume, 6));
+          set('avg', fmt(row.avgPrice, 5));
+          set('margin', money(row.margin));
+          const tp = document.querySelector(`[data-cell="tp-${index}"]`);
+          const sl = document.querySelector(`[data-cell="sl-${index}"]`);
+          if (tp) { tp.textContent = signedMoney(row.targetPnl); tp.className = row.targetPnl >= 0 ? 'positive' : 'negative'; }
+          if (sl) { sl.textContent = signedMoney(row.stopPnl); sl.className = row.stopPnl >= 0 ? 'positive' : 'negative'; }
+        });
+      }
+
+      function calculate() {
+        const config = getConfig();
+        const errors = validate(config);
+        if (errors.length) { showToast(errors[0]); return; }
+        $('orders').value = config.orders;
+        state.rows = buildRows(config);
+        render(true);
+        persist();
+      }
+
+      function setSide(side) {
+        state.side = side;
+        document.querySelectorAll('[data-side]').forEach(btn => btn.classList.toggle('active', btn.dataset.side === side));
+        const entry = numberValue('entryPrice', 0);
+        if (side === 'BUY') {
+          if (numberValue('targetPrice') <= entry) $('targetPrice').value = round(entry + Math.max(numberValue('gapValue', 5) * 3, 1), 4);
+          if (numberValue('stopPrice') >= entry) $('stopPrice').value = round(entry - Math.max(numberValue('gapValue', 5) * 10, 1), 4);
+        } else {
+          if (numberValue('targetPrice') >= entry) $('targetPrice').value = round(entry - Math.max(numberValue('gapValue', 5) * 3, 1), 4);
+          if (numberValue('stopPrice') <= entry) $('stopPrice').value = round(entry + Math.max(numberValue('gapValue', 5) * 10, 1), 4);
+        }
+        calculate();
+      }
+
+      function setMode(groupId, mode) {
+        const group = $(groupId);
+        group.querySelectorAll('button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+        if (groupId === 'gapModeTabs') {
+          state.gapMode = mode;
+          $('gapHint').textContent = mode === 'fixed'
+            ? 'Ví dụ 5 = mỗi lệnh cách nhau 5 giá.'
+            : 'Ví dụ 0.2 = mỗi lệnh cách nhau 0.2% giá đầu.';
+        } else {
+          state.volumeMode = mode;
+          $('volumeMultiplier').disabled = mode !== 'progressive';
+        }
+        calculate();
+      }
+
+      function persist() {
+        const config = getConfig();
+        try { localStorage.setItem('dca-planner-v1', JSON.stringify({ ...config })); } catch (_) {}
+      }
+
+      function loadSaved() {
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem('dca-planner-v1') || 'null'); } catch (_) {}
+        const config = { ...DEFAULTS, ...(saved || {}) };
+        state.side = config.side;
+        state.gapMode = config.gapMode;
+        state.volumeMode = config.volumeMode;
+        fields.forEach(id => { if (config[id] !== undefined) $(id).value = config[id]; });
+        document.querySelectorAll('[data-side]').forEach(btn => btn.classList.toggle('active', btn.dataset.side === state.side));
+        document.querySelectorAll('#gapModeTabs button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === state.gapMode));
+        document.querySelectorAll('#volumeModeTabs button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === state.volumeMode));
+        $('volumeMultiplier').disabled = state.volumeMode !== 'progressive';
+        $('gapHint').textContent = state.gapMode === 'fixed'
+          ? 'Ví dụ 5 = mỗi lệnh cách nhau 5 giá.'
+          : 'Ví dụ 0.2 = mỗi lệnh cách nhau 0.2% giá đầu.';
+      }
+
+      function reset() {
+        try { localStorage.removeItem('dca-planner-v1'); } catch (_) {}
+        Object.assign(state, { side: DEFAULTS.side, gapMode: DEFAULTS.gapMode, volumeMode: DEFAULTS.volumeMode, rows: [] });
+        fields.forEach(id => { $(id).value = DEFAULTS[id]; });
+        document.querySelectorAll('[data-side]').forEach(btn => btn.classList.toggle('active', btn.dataset.side === DEFAULTS.side));
+        document.querySelectorAll('#gapModeTabs button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === DEFAULTS.gapMode));
+        document.querySelectorAll('#volumeModeTabs button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === DEFAULTS.volumeMode));
+        $('volumeMultiplier').disabled = true;
+        calculate();
+        showToast('Đã khôi phục mặc định.');
+      }
+
+      function tableText(delimiter = '\t') {
+        const config = getConfig();
+        const header = ['STT','Hướng','Giá vào','Volume','Tổng volume','Giá vốn TB','Margin','P/L TP','P/L SL'];
+        const lines = state.rows.map(r => [r.index, config.side, r.price, r.volume, r.cumulativeVolume, r.avgPrice, r.margin, r.targetPnl, r.stopPnl]);
+        return [header, ...lines].map(row => row.join(delimiter)).join('\n');
+      }
+
+      async function copyTable() {
+        if (!state.rows.length) return showToast('Chưa có dữ liệu để copy.');
+        try {
+          await navigator.clipboard.writeText(tableText('\t'));
+          showToast('Đã copy bảng DCA.');
+        } catch (_) {
+          showToast('Trình duyệt không cho phép copy tự động.');
+        }
+      }
+
+      function downloadCsv() {
+        if (!state.rows.length) return showToast('Chưa có dữ liệu để tải.');
+        const csv = '\ufeff' + tableText(',');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dca-${getConfig().symbol.toLowerCase()}-${state.side.toLowerCase()}.csv`;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      }
+
+      let toastTimer;
+      function showToast(message) {
+        const toast = $('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+      }
+
+      document.querySelectorAll('[data-side]').forEach(btn => btn.addEventListener('click', () => setSide(btn.dataset.side)));
+      $('gapModeTabs').querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => setMode('gapModeTabs', btn.dataset.mode)));
+      $('volumeModeTabs').querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => setMode('volumeModeTabs', btn.dataset.mode)));
+      $('calculateBtn').addEventListener('click', calculate);
+      $('resetBtn').addEventListener('click', reset);
+      $('copyBtn').addEventListener('click', copyTable);
+      $('csvBtn').addEventListener('click', downloadCsv);
+      fields.forEach(id => $(id).addEventListener('change', () => { if (state.rows.length) calculate(); }));
+
+      loadSaved();
+      calculate();
+    })();
+  </script>
+</body>
+</html>
