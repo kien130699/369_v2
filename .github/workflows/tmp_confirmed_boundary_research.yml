@@ -1,0 +1,38 @@
+name: Temporary Confirmed Boundary Research
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tmp_research_369/**'
+      - '.github/workflows/tmp_confirmed_boundary_research.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas numpy numba tabulate
+
+      - name: Run research
+        run: python tmp_research_369/run_confirmed_boundary_research.py
+
+      - name: Upload research results
+        uses: actions/upload-artifact@v4
+        with:
+          name: confirmed-boundary-research-results
+          path: tmp_research_369/results
+          if-no-files-found: error
+          retention-days: 7
